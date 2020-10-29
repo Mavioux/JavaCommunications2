@@ -16,14 +16,14 @@ public class userApplication {
 
 
     static String echo_with_no_delay_request_code = "E0000\r";
-    static String echo_with_added_delay_request_code = "E1054\r";
-    static String image_request_code = "M2114";
-    static String audio_request_code = "A3157 \r";
+    static String echo_with_added_delay_request_code = "E4368\r";
+    static String image_request_code = "M4241";
+    static String audio_request_code = "A3157r";
     static String ithakicopter_request_code = "M8844\r";
 
-    static int serverPort = 38003;
+    static int serverPort = 38006;
     static byte[] hostIP = {(byte) 155, (byte) 207, 18, (byte) 208};
-    static int clientPort = 48003;
+    static int clientPort = 48006;
 
     static void echo(double durationInMins, DatagramSocket s, DatagramSocket r, InetAddress hostAddress, String request_code) {
         String echoString = "";
@@ -105,30 +105,31 @@ public class userApplication {
             return;
         }
 
-        byte[] imageBytes = new byte[0];
-        int counter = 0;
+        int request_timeout_counter = 5;
         for(;;) {
             try {
+                request_timeout_counter--;
                 r.receive(q);
+                request_timeout_counter = 5;
                 byte[] buffer = q.getData();
-//                imageBytes = Arrays.copyOf(imageBytes, (imageBytes.length +q.getData().length));
-//                for(int i = 0; i < q.getData().length; i++) {
-//                    imageBytes[counter + i] = buffer[i];
-//                }
-//                for (int j = 0; j < imageBytes.length; j++) {
-//                    System.out.println("data: " + j + " " + imageBytes[j]);
-//                }
+               for (int j = 0; j < buffer.length; j++) {
+                    System.out.println("data: " + j + " " + buffer[j]);
+               }
 //                counter += q.getData().length;
-
-
                 image.write(buffer);
+
 
             } catch (Exception e) {
                 System.out.println(e);
+                if(request_timeout_counter < 1){
+                    return;
+                }
             }
         }
+    }
 
-
+    static void audio(DatagramSocket s, DatagramSocket r, InetAddress hostAdress) {
+        
     }
 
     public static void main(String[] args) throws Exception {
@@ -149,7 +150,11 @@ public class userApplication {
 //        echo(0.25, s, r, hostAddress, echo_with_no_delay_request_code);
 
         //Image Request From Cam 1
-        image(s, r, hostAddress, "CAM=FIX");
+//        image(s, r, hostAddress, "CAM=FIX");
+        //Image Request From Cam 2
+//        image(s, r, hostAddress, "CAM=PTZ");
+
+        //Audio Request
 
         s.close();
         r.close();
