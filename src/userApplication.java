@@ -1,19 +1,15 @@
-
 import javax.sound.sampled.AudioFileFormat;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
-import javax.swing.*;
 import java.io.*;
-import java.math.BigInteger;
 import java.net.DatagramSocket;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
+import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class userApplication {
 
@@ -22,11 +18,12 @@ public class userApplication {
     static String echo_with_added_delay_request_code = "E4368";
     static String image_request_code = "A2936";
     static String audio_request_code = "A5225";
-    static String ithakicopter_request_code = "M8844\r";
+    static String ithakicopter_request_code = "Q2180";
+    static String vehicle_request_code = "V1297";
 
-    static int serverPort = 38028;
+    static int serverPort = 38008;
     static byte[] hostIP = {(byte) 155, (byte) 207, 18, (byte) 208};
-    static int clientPort = 48028;
+    static int clientPort = 48008;
 
     static void echo(double durationInMins, DatagramSocket s, DatagramSocket r, InetAddress hostAddress, String request_code) {
         String echoString = "";
@@ -315,6 +312,56 @@ public class userApplication {
         }
     }
 
+    static void ithakicopter_tcp(InetAddress hostAddress) throws Exception{
+        //TCP
+        int tcp_port_number = 38048;
+        Socket socket = new Socket(hostAddress, tcp_port_number);
+        InputStream input = socket.getInputStream();
+        OutputStream output = socket.getOutputStream();
+
+
+
+        //TCP Request
+        StringBuilder data = new StringBuilder();
+        InputStreamReader reader = new InputStreamReader(input);
+        int character;
+
+        String out_message = ithakicopter_request_code;
+        output.write(out_message.getBytes());
+
+        //Reading TCP Response
+        while ((character = reader.read()) != -1) {
+            data.append((char) character);
+//            System.out.println("Reading");
+        }
+
+        System.out.println(data);
+        System.out.println("Data length: " + data.length());
+
+
+        //10 TCP Requests
+        for(int i = 0; i < 10; i++) {
+            socket = new Socket(hostAddress, tcp_port_number);
+            input = socket.getInputStream();
+            output = socket.getOutputStream();
+
+            out_message = "AUTO FLIGHTLEVEL=" + (i* 50) +" LMOTOR=" + (150 + i * 5) + " RMOTOR=" + (150 + i * 5) + " PILOT \r\n";
+            System.out.println(out_message);
+            output.write(out_message.getBytes());
+
+            //TCP Response
+            StringBuilder data2 = new StringBuilder();
+            InputStreamReader reader2 = new InputStreamReader(input);
+            while ((character = reader2.read()) != -1) {
+                data2.append((char) character);
+//                System.out.println("Reading " + i);
+            }
+
+            System.out.println(data2);
+            System.out.println("Data2 length: " + data2.length());
+        }
+    }
+
     public static void main(String[] args) throws Exception {
         DatagramSocket s;
         try {
@@ -327,6 +374,8 @@ public class userApplication {
         InetAddress hostAddress = InetAddress.getByAddress(hostIP);
         r.setSoTimeout(1000);
 
+
+        //Commands!
         //Echo Request With Added Delay
 //        echo(0.25, s, r, hostAddress, echo_with_added_delay_request_code);
         //Echo Request With No Added Delay
@@ -342,7 +391,33 @@ public class userApplication {
         //Audio DPCM Request  of Frequency Generator
 //        audio(s, r, hostAddress, "T", "999", "", true);
         //Audio DPCM Request  of Frequency Generator
-        aq_audio(s, r, hostAddress, "F", "999", "", true);
+//        aq_audio(s, r, hostAddress, "F", "999", "", true);
+
+        //Close udp DataSockets
+        s.close();
+        r.close();
+
+//        out.write("GET  /netlab/hello.htmlHTTP/1.0\r\nHost:ithaki.eng.auth.gr:80\r\n\r\n".getBytes());
+//
+//        // Read what gets into the input
+//        StringBuilder data = new StringBuilder();
+//
+//        while ((character = reader.read()) != -1) {
+//            data.append((char) character);
+//        }
+//
+//        System.out.println(data);
+
+        ithakicopter_tcp(hostAddress);
+
+
+
+
+
+
+
+//        System.out.println(out);
+
 
 //        //Iterate through ithaki's song repository
 //        for(int i = 0; i < 100; i++){
@@ -357,8 +432,7 @@ public class userApplication {
 //            audio(s, r, hostAddress, "", "F", "999", lzz, false);
 //        }
 
-        s.close();
-        r.close();
+
     }
 }
 
