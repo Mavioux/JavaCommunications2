@@ -20,7 +20,7 @@ public class userApplication {
     static String echo_with_added_delay_request_code = "E4368";
     static String image_request_code = "A2936";
     static String audio_request_code = "A5225";
-    static String ithakicopter_request_code = "Q6120";
+    static String ithakicopter_request_code = "Q5373";
     static String vehicle_request_code = "V2244";
 
     static int serverPort = 38004;
@@ -314,7 +314,7 @@ public class userApplication {
         }
     }
 
-    static void ithakicopter_tcp(InetAddress hostAddress) throws Exception{
+    static void ithakicopter_tcp(InetAddress hostAddress, String altitude) throws Exception{
         //TCP
         int tcp_port_number = 38048;
         Socket socket = new Socket(hostAddress, tcp_port_number);
@@ -340,6 +340,8 @@ public class userApplication {
         System.out.println(data);
         System.out.println("Data length: " + data.length());
 
+        String output_string = "";
+
 
         //10 TCP Requests
         for(int i = 0; i < 10; i++) {
@@ -347,7 +349,7 @@ public class userApplication {
             input = socket.getInputStream();
             output = socket.getOutputStream();
 
-            out_message = "AUTO FLIGHTLEVEL=" + (i * 50) + " LMOTOR=" + (150 + i * 5) + " RMOTOR=" + (150 + i * 5) + " PILOT \r\n";
+            out_message = "AUTO FLIGHTLEVEL=" + altitude + " LMOTOR=" + (150 + i * 5) + " RMOTOR=" + (150 + i * 5) + " PILOT \r\n";
             System.out.println(out_message);
             output.write(out_message.getBytes());
 
@@ -361,6 +363,22 @@ public class userApplication {
 
             System.out.println(data2);
             System.out.println("Data2 length: " + data2.length());
+            output_string += data2;
+            output_string += " \n";
+        }
+
+        //Initialize Directory if it does not exist
+        File file = new File("./data/ithakicopter/");
+        if(file.exists() == false) {
+            file.mkdir();
+        }
+        //Initialize file that will store each value
+        file = new File("./data/ithakicopter/" + System.currentTimeMillis() + "_Ithakicopter" + ithakicopter_request_code + "Altitude=" + altitude + ".txt");
+        //Save output_string to a txt file
+        try (PrintWriter out = new PrintWriter(file)) {
+            out.println(output_string);
+        } catch (Exception e) {
+            System.out.println(e.toString());
         }
 
 //        out.write("GET  /netlab/hello.htmlHTTP/1.0\r\nHost:ithaki.eng.auth.gr:80\r\n\r\n".getBytes());
@@ -547,10 +565,11 @@ public class userApplication {
         r.close();
 
         //Ithakicopter Request
-//        ithakicopter_tcp(hostAddress);
+        ithakicopter_tcp(hostAddress, "100");
+        ithakicopter_tcp(hostAddress, "200");
 
         //Vehicle Request
-        vehicle_tcp(hostAddress);
+//        vehicle_tcp(hostAddress);
 
 
 
