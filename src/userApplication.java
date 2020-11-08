@@ -500,6 +500,13 @@ public class userApplication {
             System.out.println(file_output);
         }
 
+        //Save the file_output on a csv file
+        try (PrintWriter out = new PrintWriter("./data./vehicle/" + System.currentTimeMillis() + "_Vehicle.csv")) {
+            out.println(file_output);
+        } catch (Exception e) {
+            System.out.println(e.toString());
+        }
+
 
 
     }
