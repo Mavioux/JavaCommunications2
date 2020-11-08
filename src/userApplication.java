@@ -1,3 +1,4 @@
+import javax.management.remote.JMXServerErrorException;
 import javax.sound.sampled.AudioFileFormat;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
@@ -9,6 +10,7 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
 public class userApplication {
@@ -18,12 +20,12 @@ public class userApplication {
     static String echo_with_added_delay_request_code = "E4368";
     static String image_request_code = "A2936";
     static String audio_request_code = "A5225";
-    static String ithakicopter_request_code = "Q2180";
-    static String vehicle_request_code = "V1297";
+    static String ithakicopter_request_code = "Q6120";
+    static String vehicle_request_code = "V2244";
 
-    static int serverPort = 38008;
+    static int serverPort = 38004;
     static byte[] hostIP = {(byte) 155, (byte) 207, 18, (byte) 208};
-    static int clientPort = 48008;
+    static int clientPort = 48004;
 
     static void echo(double durationInMins, DatagramSocket s, DatagramSocket r, InetAddress hostAddress, String request_code) {
         String echoString = "";
@@ -321,7 +323,7 @@ public class userApplication {
 
 
 
-        //TCP Request
+        //TCP Request (first we send the ithakicopter request code)
         StringBuilder data = new StringBuilder();
         InputStreamReader reader = new InputStreamReader(input);
         int character;
@@ -345,7 +347,7 @@ public class userApplication {
             input = socket.getInputStream();
             output = socket.getOutputStream();
 
-            out_message = "AUTO FLIGHTLEVEL=" + (i* 50) +" LMOTOR=" + (150 + i * 5) + " RMOTOR=" + (150 + i * 5) + " PILOT \r\n";
+            out_message = "AUTO FLIGHTLEVEL=" + (i * 50) + " LMOTOR=" + (150 + i * 5) + " RMOTOR=" + (150 + i * 5) + " PILOT \r\n";
             System.out.println(out_message);
             output.write(out_message.getBytes());
 
@@ -360,6 +362,146 @@ public class userApplication {
             System.out.println(data2);
             System.out.println("Data2 length: " + data2.length());
         }
+
+//        out.write("GET  /netlab/hello.htmlHTTP/1.0\r\nHost:ithaki.eng.auth.gr:80\r\n\r\n".getBytes());
+//
+//        // Read what gets into the input
+//        StringBuilder data = new StringBuilder();
+//
+//        while ((character = reader.read()) != -1) {
+//            data.append((char) character);
+//        }
+//
+//        System.out.println(data);
+    }
+
+    static void vehicle_tcp(InetAddress hostAddress) throws Exception {
+        int tcp_port_number = 29078;
+
+        String[] messages = {"1F", "0F", "11", "0C", "0D", "05"};
+
+
+        //Initialize Directory if it does not exist
+        File file = new File("./data/vehicle/");
+        if(file.exists() == false) {
+            file.mkdir();
+        }
+        //Initialize file that will store each value
+        file = new File("./data/vehicle/" + System.currentTimeMillis() + "_Vehicle.txt");
+
+        String file_output = "Engine Run Time, Intake air temperature, Throttle Position, Engine RPM, Vehicle Speed, Coolant Temperature, \n";
+        ArrayList<Integer> values = new ArrayList<>();
+
+
+        long startTime = System.currentTimeMillis();
+        //Ask for values for 5 minutes
+        while(System.currentTimeMillis() < startTime + 5 * 60 * 1000){
+            for (int i = 0; i < messages.length; i++) {
+
+                Socket socket = new Socket(hostAddress, tcp_port_number);
+                InputStream input = socket.getInputStream();
+                OutputStream output = socket.getOutputStream();
+
+                StringBuilder data = new StringBuilder();
+                InputStreamReader reader = new InputStreamReader(input);
+                int character;
+
+                String out_message = "01 "+ messages[i] +"\r";
+                output.write(out_message.getBytes());
+                System.out.println("Sent request: " + out_message);
+
+                //Reading TCP Response
+                while ((character = reader.read()) != -1) {
+                    data.append((char) character);
+                    System.out.println("Reading " + i);
+                }
+                System.out.println("Data  length: " + data.length());
+                System.out.println(data);
+
+                int a = 0;
+                int b = 0;
+                int result = 0;
+                String xx = "";
+                String yy = "";
+                switch (i) {
+                    case 0:
+                        //Get the values in hex
+                        xx = data.substring(6,8);
+                        //Hex to Decimal
+                        yy = data.substring(9,11);
+                        a = Integer.parseInt(xx, 16);
+                        b = Integer.parseInt(yy, 16);
+                        result = 256 * a + b;
+                        System.out.println(result);
+                        values.add(result);
+                        break;
+                    case 1:
+                        //Get the value in hex
+                        xx = data.substring(6,8);
+                        //Hex to Decimal
+                        a = Integer.parseInt(xx, 16);
+                        result = a - 40;
+                        values.add(result);
+                        System.out.println(result);
+                        break;
+                    case 2:
+                        //Get the value in hex
+                        xx = data.substring(6,8);
+                        //Hex to Decimal
+                        a = Integer.parseInt(xx, 16);
+                        result = a * 100 / 255;
+                        System.out.println(result);
+                        values.add(result);
+                        break;
+                    case 3:
+                        //Get the values in hex
+                        xx = data.substring(6,8);
+                        //Hex to Decimal
+                        yy = data.substring(9,11);
+                        a = Integer.parseInt(xx, 16);
+                        b = Integer.parseInt(yy, 16);
+                        result = ((a*256) + b) / 4;
+                        values.add(result);
+                        System.out.println(result);
+                        break;
+                    case 4:
+                        //Get the value in hex
+                        xx = data.substring(6,8);
+                        //Hex to Decimal
+                        a = Integer.parseInt(xx, 16);
+                        values.add(a);
+                        System.out.println(a);
+                        break;
+                    case 5:
+                        //Get the value in hex
+                        xx = data.substring(6,8);
+                        //Hex to Decimal
+                        a = Integer.parseInt(xx, 16);
+                        result = a - 40;
+                        values.add(result);
+                        System.out.println(result);
+                        break;
+
+
+                }
+
+                socket.close();
+            }
+
+            //After having looped once for each data save it to file_ouput in the right format
+            for (int i = 0; i < values.size(); i++) {
+                file_output += values.get(i).toString() + ", ";
+            }
+            //Gotta clear the values
+            values.clear();
+            System.out.println("After clearing, values size: " + values.size());
+            //Add a new line in file_output
+            file_output += " \n";
+            System.out.println(file_output);
+        }
+
+
+
     }
 
     public static void main(String[] args) throws Exception {
@@ -397,18 +539,11 @@ public class userApplication {
         s.close();
         r.close();
 
-//        out.write("GET  /netlab/hello.htmlHTTP/1.0\r\nHost:ithaki.eng.auth.gr:80\r\n\r\n".getBytes());
-//
-//        // Read what gets into the input
-//        StringBuilder data = new StringBuilder();
-//
-//        while ((character = reader.read()) != -1) {
-//            data.append((char) character);
-//        }
-//
-//        System.out.println(data);
+        //Ithakicopter Request
+//        ithakicopter_tcp(hostAddress);
 
-        ithakicopter_tcp(hostAddress);
+        //Vehicle Request
+        vehicle_tcp(hostAddress);
 
 
 
