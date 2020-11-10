@@ -19,15 +19,15 @@ import java.util.concurrent.TimeUnit;
 public class userApplication {
 
     static String echo_with_no_delay_request_code = "E0000";
-    static String echo_with_added_delay_request_code = "E5495";
-    static String image_request_code = "M3050";
-    static String audio_request_code = "A8247";
-    static String ithakicopter_request_code = "Q8718";
-    static String vehicle_request_code = "V0447";
+    static String echo_with_added_delay_request_code = "E0455";
+    static String image_request_code = "M7665";
+    static String audio_request_code = "A8375";
+    static String ithakicopter_request_code = "Q3683";
+    static String vehicle_request_code = "V0840";
 
-    static int serverPort = 38046;
+    static int serverPort = 38004;
     static byte[] hostIP = {(byte) 155, (byte) 207, 18, (byte) 208};
-    static int clientPort = 48046;
+    static int clientPort = 48004;
 
     static void echo(double durationInMins, DatagramSocket s, DatagramSocket r, InetAddress hostAddress, String request_code, String timeNowInISO) {
         String echoString = "";
@@ -52,11 +52,13 @@ public class userApplication {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-
+            int requestTimeoutcounter = 5;
             for (; ; ) {
                 System.out.println("Waiting for answer");
                 try {
+                    requestTimeoutcounter--;
                     r.receive(q);
+                    requestTimeoutcounter = 5;
                     String message = new String(rxbuffer, 0, q.getLength());
                     long responseTime = System.currentTimeMillis() - requestTime;
                     System.out.println(message);
@@ -85,6 +87,9 @@ public class userApplication {
                     break;
                 } catch (Exception x) {
                     System.out.println(x);
+                    if(requestTimeoutcounter < 0) {
+                        break;
+                    }
                 }
             }
         }
@@ -92,13 +97,13 @@ public class userApplication {
         System.out.println(packetCounter);
 
         //Save echoString on a csv file
-        try (PrintWriter out = new PrintWriter((request_code == echo_with_added_delay_request_code) ? "./data/"  + timeNowInISO +"/echo_with_added_delay.csv" : "./data./"  + timeNowInISO + "/echo_with_no_delay.csv")) {
+        try (PrintWriter out = new PrintWriter((request_code == echo_with_added_delay_request_code) ? "./data/"  + timeNowInISO +"/echo/echo_with_added_delay.csv" : "./data./"  + timeNowInISO + "/echo/echo_with_no_delay.csv")) {
             out.println(echoString);
         } catch (Exception e) {
             System.out.println(e.toString());
         }
         //Save throughputString on a csv file
-        try (PrintWriter out = new PrintWriter((request_code == echo_with_added_delay_request_code) ? "./data/"  + timeNowInISO +"/throughput_with_added_delay.csv" : "./data./"  + timeNowInISO + "/throughput_with_no_delay.csv")) {
+        try (PrintWriter out = new PrintWriter((request_code == echo_with_added_delay_request_code) ? "./data/"  + timeNowInISO +"/echo/throughput_with_added_delay.csv" : "./data./"  + timeNowInISO + "/echo/throughput_with_no_delay.csv")) {
             out.println(throughputString);
         } catch (Exception e) {
             System.out.println(e.toString());
@@ -144,7 +149,7 @@ public class userApplication {
     }
 
     static void image(DatagramSocket s, DatagramSocket r, InetAddress hostAddress, String cameraParameter, String timeNowInISO) {
-        String request_code = image_request_code + cameraParameter + "\r";
+        String request_code = image_request_code + cameraParameter;
         System.out.println(request_code);
         byte[] txbuffer = request_code.getBytes();
         DatagramPacket p = new DatagramPacket(txbuffer, txbuffer.length, hostAddress, serverPort);
@@ -325,6 +330,7 @@ public class userApplication {
         byte[] mean_in_bytes = new byte[4];
         byte[] step_in_bytes = new byte[4];
         byte[] importantBuffer = new byte[2*2*128*Integer.parseInt(xxx)];
+        int counter = 0;
         for(int i = 0; i < Integer.parseInt(xxx); i++) {
            try{
                r.receive(q);
@@ -346,26 +352,30 @@ public class userApplication {
                int step = ByteBuffer.wrap(step_in_bytes).order(ByteOrder.LITTLE_ENDIAN).getInt();
                System.out.println("Step: " + step);
 
-               int counter = 0;
+
+               int sample1 = 0;
+               int sample2 = 0;
                for (int j = 4; j < q.getData().length; j++){
                    int nibble1 = (int)(q.getData()[j] & 0x0000000F);
-                   System.out.println(nibble1);
+//                   System.out.println(nibble1);
                    int nibble2 = (int)((q.getData()[j] & 0x000000F0)>>4);
-                   System.out.println(nibble2);
+//                   System.out.println(nibble2);
 
                    int difference1 = nibble2-8;
                    int difference2 = nibble1-8;
 
                    //Creation of samples
-                   int sample1 = step*difference1 + mean; //First demodulated sample (16 bits)
-                   int sample2 = step*difference2 + mean;//Second demodulated sample (16 bits)
+                   sample1 = sample2 + step*difference1 + mean; //First demodulated sample (16 bits)
+                   sample2 = sample1 + step*difference2 + mean;//Second demodulated sample (16 bits)
+                   System.out.println(sample1);
+                   System.out.println(sample2);
 
                    //Save the samples to the importantBuffer that contains the song
                    //Maybe rename importantBuffer to songBuffer...
-                   importantBuffer[2 * 128 * i + counter] = (byte) (sample1);
-                   importantBuffer[2 * 128 * i + counter + 1] = (byte) (sample1 >> 8);
-                   importantBuffer[2 * 128 * i + counter + 2] = (byte) (sample2);
-                   importantBuffer[2 * 128 * i + counter + 3] = (byte) (sample2 >> 8);
+                   importantBuffer[counter] = (byte) (sample1);
+                   importantBuffer[counter + 1] = (byte) ((sample1) >> 8);
+                   importantBuffer[counter + 2] = (byte) (sample2);
+                   importantBuffer[counter + 3] = (byte) ((sample2) >> 8);
                    counter += 4;
                }
 
@@ -398,6 +408,10 @@ public class userApplication {
             System.out.println("Saved wav file with name: " + file.getName());
         } catch (Exception e) {
             e.printStackTrace();
+        }
+
+        for(int i = 0; i < importantBuffer.length; i++) {
+            System.out.println(importantBuffer[i]);
         }
     }
 
@@ -628,6 +642,10 @@ public class userApplication {
         if(file.exists() == false) {
             file.mkdir();
         }
+        file = new File("./data/" + timeNowInISO + "/echo");
+        if(file.exists() == false) {
+            file.mkdir();
+        }
         file = new File("./data/" + timeNowInISO + "/audio");
         if(file.exists() == false) {
             file.mkdir();
@@ -665,7 +683,7 @@ public class userApplication {
         //Audio DPCM Request  of Frequency Generator
 //        audio(s, r, hostAddress, "T", "999", "", true, timeNowInISO);
         //Audio DPCM Request  of Frequency Generator
-//        aq_audio(s, r, hostAddress, "F", "999", "", true, timeNowInISO);
+        aq_audio(s, r, hostAddress, "F", "999", "", true, timeNowInISO);
 
         //Close udp DataSockets
         s.close();
@@ -676,7 +694,7 @@ public class userApplication {
 //        ithakicopter_tcp(hostAddress, "200", timeNowInISO);
 
         //Vehicle Request
-        vehicle_tcp(hostAddress, timeNowInISO);
+//        vehicle_tcp(hostAddress, timeNowInISO);
 
         //Iterate ithaki's Repo
 //        iterate_ithaki_music_repo(s, r, hostAddress);
