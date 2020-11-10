@@ -480,47 +480,32 @@ public class userApplication {
 //        System.out.println(data);
     }
 
-    static void vehicle_tcp(InetAddress hostAddress) throws Exception {
+    static void vehicle_tcp(InetAddress hostAddress, String timeNowInISO) throws Exception {
         int tcp_port_number = 29078;
         Socket socket = new Socket(hostAddress, tcp_port_number);
 
         String[] messages = {"1F", "0F", "11", "0C", "0D", "05"};
 
-
-        //Initialize Directory if it does not exist
-        File file = new File("./data/vehicle/");
-        if(file.exists() == false) {
-            file.mkdir();
-        }
         //Initialize file that will store each value
-        file = new File("./data/vehicle/" + System.currentTimeMillis() + "_Vehicle.txt");
+        File file = new File("./data/" + timeNowInISO + "/vehicle/Vehicle.txt");
 
         String file_output = "Engine Run Time, Intake air temperature, Throttle Position, Engine RPM, Vehicle Speed, Coolant Temperature, \n";
         ArrayList<Integer> values = new ArrayList<>();
 
 
         long startTime = System.currentTimeMillis();
+        InputStream input = socket.getInputStream();
+        OutputStream output = socket.getOutputStream();
         //Ask for values for 5 minutes
         while(System.currentTimeMillis() < startTime + 5 * 60 * 1000){
             for (int i = 0; i < messages.length; i++) {
-
-
-                InputStream input = socket.getInputStream();
-                OutputStream output = socket.getOutputStream();
-
-                StringBuilder data = new StringBuilder();
-                InputStreamReader reader = new InputStreamReader(input);
-                int character;
-
                 String out_message = "01 "+ messages[i] +"\r";
                 output.write(out_message.getBytes());
                 System.out.println("Sent request: " + out_message);
 
                 //Reading TCP Response
-                while ((character = reader.read()) != -1) {
-                    data.append((char) character);
-                    System.out.println("Reading " + i);
-                }
+                BufferedReader reader = new BufferedReader(new InputStreamReader(input));
+                String data = reader.readLine();
                 System.out.println("Data  length: " + data.length());
                 System.out.println(data);
 
@@ -593,7 +578,7 @@ public class userApplication {
 
 
             }
-            socket.close();
+
 
             //After having looped once for each data save it to file_ouput in the right format
             for (int i = 0; i < values.size(); i++) {
@@ -607,8 +592,10 @@ public class userApplication {
             System.out.println(file_output);
         }
 
+        socket.close();
+
         //Save the file_output on a csv file
-        try (PrintWriter out = new PrintWriter("./data./vehicle/" + System.currentTimeMillis() + "_Vehicle.csv")) {
+        try (PrintWriter out = new PrintWriter(file)) {
             out.println(file_output);
         } catch (Exception e) {
             System.out.println(e.toString());
@@ -689,10 +676,34 @@ public class userApplication {
 //        ithakicopter_tcp(hostAddress, "200", timeNowInISO);
 
         //Vehicle Request
-//        vehicle_tcp(hostAddress);
+        vehicle_tcp(hostAddress, timeNowInISO);
 
         //Iterate ithaki's Repo
 //        iterate_ithaki_music_repo(s, r, hostAddress);
+
+
+        //Tcp
+//        int tcp_port_number = 29078;
+//        Socket socket = new Socket(hostAddress, tcp_port_number);
+//        byte[] data = {};
+//
+//        InputStream input = socket.getInputStream();
+//        OutputStream output = socket.getOutputStream();
+//
+//        String message = "01 1F\r";
+//        output.write(message.getBytes());
+//
+//        BufferedReader reader = new BufferedReader(new InputStreamReader(input));
+//        String line = reader.readLine();
+//        System.out.println(line);
+//
+//        message = "01 0F\r";
+//        output.write(message.getBytes());
+//
+//        reader = new BufferedReader(new InputStreamReader(input));
+//        line = reader.readLine();
+//        System.out.println(line);
+
 
 
 
