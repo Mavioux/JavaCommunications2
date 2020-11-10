@@ -10,24 +10,26 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
 public class userApplication {
 
-
     static String echo_with_no_delay_request_code = "E0000";
-    static String echo_with_added_delay_request_code = "E4368";
-    static String image_request_code = "A2936";
-    static String audio_request_code = "A5225";
-    static String ithakicopter_request_code = "Q5373";
-    static String vehicle_request_code = "V2244";
+    static String echo_with_added_delay_request_code = "E8700";
+    static String image_request_code = "M8953";
+    static String audio_request_code = "A8247";
+    static String ithakicopter_request_code = "Q8718";
+    static String vehicle_request_code = "V0447";
 
-    static int serverPort = 38004;
+    static int serverPort = 38032;
     static byte[] hostIP = {(byte) 155, (byte) 207, 18, (byte) 208};
-    static int clientPort = 48004;
+    static int clientPort = 48032;
 
-    static void echo(double durationInMins, DatagramSocket s, DatagramSocket r, InetAddress hostAddress, String request_code) {
+    static void echo(double durationInMins, DatagramSocket s, DatagramSocket r, InetAddress hostAddress, String request_code, String timeNowInISO) {
         String echoString = "";
         int packetCounter = 0;
 
@@ -66,14 +68,52 @@ public class userApplication {
         System.out.println(packetCounter);
 
         //Save echoString on a csv file
-        try (PrintWriter out = new PrintWriter((request_code == echo_with_added_delay_request_code) ? "./data/echo_with_added_delay.csv" : "./data./echo_with_no_delay.csv")) {
+        try (PrintWriter out = new PrintWriter((request_code == echo_with_added_delay_request_code) ? "./data/"  + timeNowInISO +"/echo_with_added_delay.csv" : "./data./"  + timeNowInISO + "/echo_with_no_delay.csv")) {
             out.println(echoString);
         } catch (Exception e) {
             System.out.println(e.toString());
         }
     }
 
-    static void image(DatagramSocket s, DatagramSocket r, InetAddress hostAddress, String cameraParameter) {
+    static void temperature(DatagramSocket s, DatagramSocket r, InetAddress hostAddress, String request_code, String timeNowInISO){
+        byte[] txbuffer = request_code.getBytes();
+        DatagramPacket p = new DatagramPacket(txbuffer, txbuffer.length, hostAddress, serverPort);
+
+        byte[] rxbuffer = new byte[2048];
+        DatagramPacket q = new DatagramPacket(rxbuffer, rxbuffer.length);
+
+        try {
+            s.send(p);
+            System.out.println("Sent the request " + request_code);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        long requestTime = System.currentTimeMillis();
+
+        String echoString = "";
+        for (; ; ) {
+            System.out.println("Waiting for answer");
+            try {
+                r.receive(q);
+                String message = new String(rxbuffer, 0, q.getLength());
+                System.out.println(message);
+                echoString += message + ", " + requestTime + ", " + System.currentTimeMillis() + ", " + (System.currentTimeMillis() - requestTime) + ", \n";
+                break;
+            } catch (Exception x) {
+                System.out.println(x);
+            }
+        }
+
+        //Save echoString on a csv file
+        try (PrintWriter out = new PrintWriter("./data/"  + timeNowInISO + "/temperature.csv")) {
+            out.println(echoString);
+        } catch (Exception e) {
+            System.out.println(e.toString());
+        }
+    }
+
+    static void image(DatagramSocket s, DatagramSocket r, InetAddress hostAddress, String cameraParameter, String timeNowInISO) {
         String request_code = image_request_code + cameraParameter + "\r";
         System.out.println(request_code);
         byte[] txbuffer = request_code.getBytes();
@@ -93,15 +133,7 @@ public class userApplication {
         File file = null;
         OutputStream image = null;
         try {
-            file = new File("./data/images/image" + cameraParameter + ".jpg");
-            image = new FileOutputStream(file);
-        } catch (Exception e) {
-            System.out.println(e.toString());
-            return;
-        }
-
-        try {
-            file = new File("./data/images/image" + cameraParameter + ".jpg");
+            file = new File("./data/" + timeNowInISO + "/images/image" + cameraParameter + ".jpg");
             image = new FileOutputStream(file);
         } catch (Exception e) {
             System.out.println(e.toString());
@@ -131,7 +163,7 @@ public class userApplication {
         }
     }
 
-    static void audio(DatagramSocket s, DatagramSocket r, InetAddress hostAddress, String y, String xxx, String lzz, boolean timeStamp) {
+    static void audio(DatagramSocket s, DatagramSocket r, InetAddress hostAddress, String y, String xxx, String lzz, boolean timeStamp, String timeNowInISO) {
 
         String request_code = audio_request_code + lzz + y + xxx;
         try {
@@ -191,9 +223,9 @@ public class userApplication {
         File file = null;
         try {
             if (!timeStamp) {
-                file = new File("./data/audio/ithaki_music_repo/audio_" + lzz + "_" + xxx + ".wav");
+                file = new File("./data/" + timeNowInISO +"/audio/ithaki_music_repo/audio_" + lzz + "_" + xxx + ".wav");
             } else {
-                file = new File("./data/audio/audio_" + System.currentTimeMillis() + "_" + lzz + "_" + y + xxx + ".wav");
+                file = new File("./data/" + timeNowInISO + "/audio/audio_" + System.currentTimeMillis() + "_" + lzz + "_" + y + xxx + ".wav");
             }
         } catch (Exception e) {
             System.out.println(e.toString());
@@ -212,7 +244,32 @@ public class userApplication {
         }
     }
 
-    static void aq_audio(DatagramSocket s, DatagramSocket r, InetAddress hostAddress, String y, String xxx, String lzz, boolean timeStamp) {
+    static void iterate_ithaki_music_repo(DatagramSocket s, DatagramSocket r, InetAddress hostAddress){
+
+        //Get the current time in Iso format
+        String timeNowInISO = ZonedDateTime.now( ZoneOffset.UTC ).format( DateTimeFormatter.ISO_INSTANT );
+        //Directory names cannot contain the character ":" so I replace them with "-"
+        timeNowInISO = timeNowInISO.replaceAll(":", "-");
+
+        File file = new File("./data/" + timeNowInISO + "/audio/ithaki_music_repo");
+        if(file.exists() == false) {
+            file.mkdir();
+        }
+        //Iterate through ithaki's song repository
+        for(int i = 0; i < 100; i++){
+            String lzz = "";
+            if(i < 10){
+                lzz = "L0" + i;
+            }
+            else {
+                lzz = "L" + i;
+            }
+            System.out.println("lzz: " + lzz);
+            audio(s, r, hostAddress, "", "F", "999", false, "");
+        }
+    }
+
+    static void aq_audio(DatagramSocket s, DatagramSocket r, InetAddress hostAddress, String y, String xxx, String lzz, boolean timeStamp, String timeNowInISO) {
 
         String request_code = audio_request_code + "AQ" + lzz + y + xxx;
         try {
@@ -292,10 +349,10 @@ public class userApplication {
         File file = null;
         try {
             if(!timeStamp) {
-                file = new File("./data/audio/ithaki_music_repo_AQ/audio_" + lzz + "_" + xxx + ".wav");
+                file = new File("./data/" + timeNowInISO + "/audio/ithaki_music_repo_AQ/audio_" + lzz + "_" + xxx + ".wav");
             }
             else {
-                file = new File("./data/audio/audio_" + System.currentTimeMillis() + "_AQ" + "_" + lzz + "_" + y + xxx + ".wav");
+                file = new File("./data/" + timeNowInISO + "/audio/audio_" + System.currentTimeMillis() + "_AQ" + "_" + lzz + "_" + y + xxx + ".wav");
             }
         } catch (Exception e) {
             System.out.println(e.toString());
@@ -314,7 +371,7 @@ public class userApplication {
         }
     }
 
-    static void ithakicopter_tcp(InetAddress hostAddress, String altitude) throws Exception{
+    static void ithakicopter_tcp(InetAddress hostAddress, String altitude, String timeNowInISO) throws Exception{
         //TCP
         int tcp_port_number = 38048;
         Socket socket = new Socket(hostAddress, tcp_port_number);
@@ -368,12 +425,12 @@ public class userApplication {
         }
 
         //Initialize Directory if it does not exist
-        File file = new File("./data/ithakicopter/");
+        File file = new File("./data/" + timeNowInISO + "/ithakicopter/");
         if(file.exists() == false) {
             file.mkdir();
         }
         //Initialize file that will store each value
-        file = new File("./data/ithakicopter/" + System.currentTimeMillis() + "_Ithakicopter" + ithakicopter_request_code + "Altitude=" + altitude + ".txt");
+        file = new File("./data/" + timeNowInISO + "/ithakicopter/" + System.currentTimeMillis() + "_Ithakicopter" + ithakicopter_request_code + "Altitude=" + altitude + ".txt");
         //Save output_string to a txt file
         try (PrintWriter out = new PrintWriter(file)) {
             out.println(output_string);
@@ -395,6 +452,7 @@ public class userApplication {
 
     static void vehicle_tcp(InetAddress hostAddress) throws Exception {
         int tcp_port_number = 29078;
+        Socket socket = new Socket(hostAddress, tcp_port_number);
 
         String[] messages = {"1F", "0F", "11", "0C", "0D", "05"};
 
@@ -416,7 +474,7 @@ public class userApplication {
         while(System.currentTimeMillis() < startTime + 5 * 60 * 1000){
             for (int i = 0; i < messages.length; i++) {
 
-                Socket socket = new Socket(hostAddress, tcp_port_number);
+
                 InputStream input = socket.getInputStream();
                 OutputStream output = socket.getOutputStream();
 
@@ -503,8 +561,9 @@ public class userApplication {
 
                 }
 
-                socket.close();
+
             }
+            socket.close();
 
             //After having looped once for each data save it to file_ouput in the right format
             for (int i = 0; i < values.size(); i++) {
@@ -530,6 +589,12 @@ public class userApplication {
     }
 
     public static void main(String[] args) throws Exception {
+
+        //Get the current time in Iso format
+        String timeNowInISO = ZonedDateTime.now( ZoneOffset.UTC ).format( DateTimeFormatter.ISO_INSTANT );
+        //Directory names cannot contain the character ":" so I replace them with "-"
+        timeNowInISO = timeNowInISO.replaceAll(":", "-");
+
         DatagramSocket s;
         try {
             s = new DatagramSocket();
@@ -541,57 +606,68 @@ public class userApplication {
         InetAddress hostAddress = InetAddress.getByAddress(hostIP);
         r.setSoTimeout(1000);
 
+        //Create the directory tree for the current session
+        File file = new File("./data/" + timeNowInISO);
+        if(file.exists() == false) {
+            file.mkdir();
+        }
+        file = new File("./data/" + timeNowInISO + "/audio");
+        if(file.exists() == false) {
+            file.mkdir();
+        }
+        file = new File("./data/" + timeNowInISO + "/images");
+        if(file.exists() == false) {
+            file.mkdir();
+        }
+        file = new File("./data/" + timeNowInISO + "/ithakicopter");
+        if(file.exists() == false) {
+            file.mkdir();
+        }
+        file = new File("./data/" + timeNowInISO + "/vehicle");
+        if(file.exists() == false) {
+            file.mkdir();
+        }
+
 
         //Commands!
         //Echo Request With Added Delay
-//        echo(0.25, s, r, hostAddress, echo_with_added_delay_request_code);
+//        echo(0.25, s, r, hostAddress, echo_with_added_delay_request_code, timeNowInISO);
         //Echo Request With No Added Delay
-//        echo(0.25, s, r, hostAddress, echo_with_no_delay_request_code);
+//        echo(0.25, s, r, hostAddress, echo_with_no_delay_request_code, timeNowInISO);
+
+        //Temperature
+//        temperature(s, r, hostAddress, (echo_with_added_delay_request_code + "T00"), timeNowInISO);
 
         //Image Request From Cam 1
-//        image(s, r, hostAddress, "CAM=FIX");
+//        image(s, r, hostAddress, "CAM=FIX", timeNowInISO);
         //Image Request From Cam 2
-//        image(s, r, hostAddress, "CAM=PTZ");
+//        image(s, r, hostAddress, "CAM=PTZ", timeNowInISO);
 
         //Audio DPCM Request of a Song
-//        audio(s, r, hostAddress, "F", "999", "", true);
+//        audio(s, r, hostAddress, "F", "999", "", true, timeNowInISO);
         //Audio DPCM Request  of Frequency Generator
-//        audio(s, r, hostAddress, "T", "999", "", true);
+//        audio(s, r, hostAddress, "T", "999", "", true, timeNowInISO);
         //Audio DPCM Request  of Frequency Generator
-//        aq_audio(s, r, hostAddress, "F", "999", "", true);
+//        aq_audio(s, r, hostAddress, "F", "999", "", true, timeNowInISO);
 
         //Close udp DataSockets
         s.close();
         r.close();
 
         //Ithakicopter Request
-        ithakicopter_tcp(hostAddress, "100");
-        ithakicopter_tcp(hostAddress, "200");
+//        ithakicopter_tcp(hostAddress, "100", timeNowInISO);
+//        ithakicopter_tcp(hostAddress, "200", timeNowInISO);
 
         //Vehicle Request
 //        vehicle_tcp(hostAddress);
 
+        //Iterate ithaki's Repo
+//        iterate_ithaki_music_repo(s, r, hostAddress);
 
 
 
 
 
-
-//        System.out.println(out);
-
-
-//        //Iterate through ithaki's song repository
-//        for(int i = 0; i < 100; i++){
-//            String lzz = "";
-//            if(i < 10){
-//                lzz = "L0" + i;
-//            }
-//            else {
-//                lzz = "L" + i;
-//            }
-//            System.out.println("lzz: " + lzz);
-//            audio(s, r, hostAddress, "", "F", "999", lzz, false);
-//        }
 
 
     }
