@@ -19,18 +19,19 @@ import java.util.concurrent.TimeUnit;
 public class userApplication {
 
     static String echo_with_no_delay_request_code = "E0000";
-    static String echo_with_added_delay_request_code = "E8700";
-    static String image_request_code = "M8953";
+    static String echo_with_added_delay_request_code = "E5495";
+    static String image_request_code = "M3050";
     static String audio_request_code = "A8247";
     static String ithakicopter_request_code = "Q8718";
     static String vehicle_request_code = "V0447";
 
-    static int serverPort = 38032;
+    static int serverPort = 38046;
     static byte[] hostIP = {(byte) 155, (byte) 207, 18, (byte) 208};
-    static int clientPort = 48032;
+    static int clientPort = 48046;
 
     static void echo(double durationInMins, DatagramSocket s, DatagramSocket r, InetAddress hostAddress, String request_code, String timeNowInISO) {
         String echoString = "";
+        String throughputString = "Number, Throughput in bits/s, \n";
         int packetCounter = 0;
 
         byte[] txbuffer = request_code.getBytes();
@@ -38,6 +39,8 @@ public class userApplication {
 
         byte[] rxbuffer = new byte[2048];
         DatagramPacket q = new DatagramPacket(rxbuffer, rxbuffer.length);
+
+        Queue fifo_response_times = new Queue(8);
 
         long startTime = System.currentTimeMillis();
 
@@ -55,9 +58,30 @@ public class userApplication {
                 try {
                     r.receive(q);
                     String message = new String(rxbuffer, 0, q.getLength());
+                    long responseTime = System.currentTimeMillis() - requestTime;
                     System.out.println(message);
                     packetCounter++;
-                    echoString += message + ", " + requestTime + ", " + System.currentTimeMillis() + ", " + (System.currentTimeMillis() - requestTime) + ", \n";
+                    echoString += message + ", " + requestTime + ", " + System.currentTimeMillis() + ", " + responseTime + ", \n";
+                    if(fifo_response_times.getRear() != 8){
+                        //Add response times until we have 8 values stores
+                        fifo_response_times.queueEnqueue(responseTime);
+                    }
+                    else {
+                        //When 8 values are stored, remove the first and add one to the end of the queue
+                        fifo_response_times.queueDequeue();
+                        fifo_response_times.queueEnqueue(responseTime);
+
+                        //We are ready to calculate the throughput in bits/s
+                        //Add all response times
+                        long response_time_sum = 0;
+                        for (int k = 0; k < fifo_response_times.getCapacity(); k++) {
+                            response_time_sum += fifo_response_times.getElementInIndex(k);
+                        }
+
+                        //Formula 32 (bytes) * 8 (bits in a byte) * 1000(milliseconds in a second) * 8 (number of packets) / response_time_sum
+                        int throughput = 32 * 8 * 1000 * 8 / (int)(response_time_sum);
+                        throughputString += packetCounter + ", " + throughput + ", \n";
+                    }
                     break;
                 } catch (Exception x) {
                     System.out.println(x);
@@ -70,6 +94,12 @@ public class userApplication {
         //Save echoString on a csv file
         try (PrintWriter out = new PrintWriter((request_code == echo_with_added_delay_request_code) ? "./data/"  + timeNowInISO +"/echo_with_added_delay.csv" : "./data./"  + timeNowInISO + "/echo_with_no_delay.csv")) {
             out.println(echoString);
+        } catch (Exception e) {
+            System.out.println(e.toString());
+        }
+        //Save throughputString on a csv file
+        try (PrintWriter out = new PrintWriter((request_code == echo_with_added_delay_request_code) ? "./data/"  + timeNowInISO +"/throughput_with_added_delay.csv" : "./data./"  + timeNowInISO + "/throughput_with_no_delay.csv")) {
+            out.println(throughputString);
         } catch (Exception e) {
             System.out.println(e.toString());
         }
