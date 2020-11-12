@@ -20,14 +20,14 @@ public class userApplication {
 
     static String echo_with_no_delay_request_code = "E0000";
     static String echo_with_added_delay_request_code = "E0455";
-    static String image_request_code = "M7665";
+    static String image_request_code = "M1357";
     static String audio_request_code = "A8375";
     static String ithakicopter_request_code = "Q3683";
     static String vehicle_request_code = "V0840";
 
-    static int serverPort = 38004;
+    static int serverPort = 38047;
     static byte[] hostIP = {(byte) 155, (byte) 207, 18, (byte) 208};
-    static int clientPort = 48004;
+    static int clientPort = 48047;
 
     static void echo(double durationInMins, DatagramSocket s, DatagramSocket r, InetAddress hostAddress, String request_code, String timeNowInISO) {
         String echoString = "";
@@ -642,46 +642,37 @@ public class userApplication {
         if(file.exists() == false) {
             file.mkdir();
         }
+
+        //Commands!
+
         file = new File("./data/" + timeNowInISO + "/echo");
         if(file.exists() == false) {
             file.mkdir();
         }
-        file = new File("./data/" + timeNowInISO + "/audio");
-        if(file.exists() == false) {
-            file.mkdir();
-        }
+        //Echo Request With Added Delay
+        echo(0.25, s, r, hostAddress, echo_with_added_delay_request_code, timeNowInISO);
+        //Echo Request With No Added Delay
+        echo(0.25, s, r, hostAddress, echo_with_no_delay_request_code, timeNowInISO);
+        //Temperature
+        temperature(s, r, hostAddress, (echo_with_added_delay_request_code + "T00"), timeNowInISO);
+
         file = new File("./data/" + timeNowInISO + "/images");
         if(file.exists() == false) {
             file.mkdir();
         }
-        file = new File("./data/" + timeNowInISO + "/ithakicopter");
-        if(file.exists() == false) {
-            file.mkdir();
-        }
-        file = new File("./data/" + timeNowInISO + "/vehicle");
-        if(file.exists() == false) {
-            file.mkdir();
-        }
-
-
-        //Commands!
-        //Echo Request With Added Delay
-//        echo(0.25, s, r, hostAddress, echo_with_added_delay_request_code, timeNowInISO);
-        //Echo Request With No Added Delay
-//        echo(0.25, s, r, hostAddress, echo_with_no_delay_request_code, timeNowInISO);
-
-        //Temperature
-//        temperature(s, r, hostAddress, (echo_with_added_delay_request_code + "T00"), timeNowInISO);
-
         //Image Request From Cam 1
-//        image(s, r, hostAddress, "CAM=FIX", timeNowInISO);
+        image(s, r, hostAddress, "CAM=FIX", timeNowInISO);
         //Image Request From Cam 2
-//        image(s, r, hostAddress, "CAM=PTZ", timeNowInISO);
+        image(s, r, hostAddress, "CAM=PTZ", timeNowInISO);
 
+        file = new File("./data/" + timeNowInISO + "/audio");
+        if(file.exists() == false) {
+            file.mkdir();
+        }
         //Audio DPCM Request of a Song
-//        audio(s, r, hostAddress, "F", "999", "", true, timeNowInISO);
+        audio(s, r, hostAddress, "F", "999", "", true, timeNowInISO);
         //Audio DPCM Request  of Frequency Generator
-//        audio(s, r, hostAddress, "T", "999", "", true, timeNowInISO);
+        audio(s, r, hostAddress, "T", "999", "", true, timeNowInISO);
         //Audio DPCM Request  of Frequency Generator
         aq_audio(s, r, hostAddress, "F", "999", "", true, timeNowInISO);
 
@@ -689,45 +680,27 @@ public class userApplication {
         s.close();
         r.close();
 
+        file = new File("./data/" + timeNowInISO + "/ithakicopter");
+        if(file.exists() == false) {
+            file.mkdir();
+        }
         //Ithakicopter Request
-//        ithakicopter_tcp(hostAddress, "100", timeNowInISO);
-//        ithakicopter_tcp(hostAddress, "200", timeNowInISO);
+        ithakicopter_tcp(hostAddress, "100", timeNowInISO);
+        ithakicopter_tcp(hostAddress, "200", timeNowInISO);
 
+        file = new File("./data/" + timeNowInISO + "/vehicle");
+        if(file.exists() == false) {
+            file.mkdir();
+        }
         //Vehicle Request
-//        vehicle_tcp(hostAddress, timeNowInISO);
+        vehicle_tcp(hostAddress, timeNowInISO);
 
+        file = new File("./data/" + timeNowInISO +"/audio/ithaki_music_repo");
+        if(file.exists() == false) {
+            file.mkdir();
+        }
         //Iterate ithaki's Repo
-//        iterate_ithaki_music_repo(s, r, hostAddress);
-
-
-        //Tcp
-//        int tcp_port_number = 29078;
-//        Socket socket = new Socket(hostAddress, tcp_port_number);
-//        byte[] data = {};
-//
-//        InputStream input = socket.getInputStream();
-//        OutputStream output = socket.getOutputStream();
-//
-//        String message = "01 1F\r";
-//        output.write(message.getBytes());
-//
-//        BufferedReader reader = new BufferedReader(new InputStreamReader(input));
-//        String line = reader.readLine();
-//        System.out.println(line);
-//
-//        message = "01 0F\r";
-//        output.write(message.getBytes());
-//
-//        reader = new BufferedReader(new InputStreamReader(input));
-//        line = reader.readLine();
-//        System.out.println(line);
-
-
-
-
-
-
-
+        iterate_ithaki_music_repo(s, r, hostAddress);
 
     }
 }
