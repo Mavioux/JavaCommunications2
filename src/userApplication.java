@@ -21,13 +21,13 @@ public class userApplication {
     static String echo_with_no_delay_request_code = "E0000";
     static String echo_with_added_delay_request_code = "E0455";
     static String image_request_code = "M1357";
-    static String audio_request_code = "A2651";
-    static String ithakicopter_request_code = "Q3683";
+    static String audio_request_code = "A2324";
+    static String ithakicopter_request_code = "Q1482";
     static String vehicle_request_code = "V0840";
 
-    static int serverPort = 38011;
+    static int serverPort = 38010;
     static byte[] hostIP = {(byte) 155, (byte) 207, 18, (byte) 208};
-    static int clientPort = 48011;
+    static int clientPort = 48010;
 
     static void echo(double durationInMins, DatagramSocket s, DatagramSocket r, InetAddress hostAddress, String request_code, String timeNowInISO) {
         String echoString = "";
@@ -459,6 +459,7 @@ public class userApplication {
         System.out.println("Data length: " + data.length());
 
         String output_string = "";
+        String important_values = "Left Motor, Right Motor, Altitude, Temperature, Pressure, \n";
 
 
         //10 TCP Requests
@@ -483,6 +484,22 @@ public class userApplication {
             System.out.println("Data2 length: " + data2.length());
             output_string += data2;
             output_string += " \n";
+
+
+            String left_motor = Character.toString(data2.charAt(449)) +Character.toString( data2.charAt(450)) + Character.toString(data2.charAt(451));
+            String right_motor = Character.toString(data2.charAt(460)) + Character.toString(data2.charAt(461)) + Character.toString(data2.charAt(462));
+            String altitude_of_flight = Character.toString(data2.charAt(473)) +  Character.toString(data2.charAt(474)) + Character.toString(data2.charAt(475));
+            String temperature = Character.toString(data2.charAt(489)) + Character.toString(data2.charAt(490)) + Character.toString(data2.charAt(491)) + Character.toString(data2.charAt(492)) + Character.toString(data2.charAt(493)) + Character.toString(data2.charAt(494));
+            String pressure = Character.toString(data2.charAt(505)) + Character.toString(data2.charAt(506)) + Character.toString(data2.charAt(507)) + Character.toString(data2.charAt(508)) + Character.toString(data2.charAt(509)) + Character.toString(data2.charAt(510)) + Character.toString(data2.charAt(511));
+            System.out.println("Left Motor " + left_motor);
+            System.out.println("Right Motor " + right_motor);
+            System.out.println("Altitude " + altitude_of_flight);
+            System.out.println("Temperature " + temperature);
+            System.out.println("Pressure " + pressure);
+
+            important_values += left_motor + ", " + right_motor + ", " + altitude + ", " + temperature + ", " + pressure + ", \n";
+
+
         }
 
         //Initialize Directory if it does not exist
@@ -495,6 +512,13 @@ public class userApplication {
         //Save output_string to a txt file
         try (PrintWriter out = new PrintWriter(file)) {
             out.println(output_string);
+        } catch (Exception e) {
+            System.out.println(e.toString());
+        }
+
+        file = new File("./data/" + timeNowInISO + "/ithakicopter/formatted" + System.currentTimeMillis() + "_Ithakicopter" + ithakicopter_request_code + "Altitude=" + altitude + ".txt");
+        try (PrintWriter out = new PrintWriter(file)) {
+            out.println(important_values);
         } catch (Exception e) {
             System.out.println(e.toString());
         }
@@ -682,12 +706,12 @@ public class userApplication {
 //        //Image Request From Cam 2
 //        image(s, r, hostAddress, "CAM=PTZ", timeNowInISO);
 //
-        file = new File("./data/" + timeNowInISO + "/audio");
-        if(file.exists() == false) {
-            file.mkdir();
-        }
+//        file = new File("./data/" + timeNowInISO + "/audio");
+//        if(file.exists() == false) {
+//            file.mkdir();
+//        }
 //        //Audio DPCM Request of a Song
-//        audio(s, r, hostAddress, "F", "100", "", true, timeNowInISO);
+//        audio(s, r, hostAddress, "F", "999", "", true, timeNowInISO);
 //        //Audio DPCM Request  of Frequency Generator
 //        audio(s, r, hostAddress, "T", "999", "", true, timeNowInISO);
 //        //Audio DPCM Request  of Frequency Generator
@@ -697,13 +721,13 @@ public class userApplication {
 //        s.close();
 //        r.close();
 //
-//        file = new File("./data/" + timeNowInISO + "/ithakicopter");
-//        if(file.exists() == false) {
-//            file.mkdir();
-//        }
+        file = new File("./data/" + timeNowInISO + "/ithakicopter");
+        if(file.exists() == false) {
+            file.mkdir();
+        }
 //        //Ithakicopter Request
-//        ithakicopter_tcp(hostAddress, "100", timeNowInISO);
-//        ithakicopter_tcp(hostAddress, "200", timeNowInISO);
+        ithakicopter_tcp(hostAddress, "100", timeNowInISO);
+        ithakicopter_tcp(hostAddress, "200", timeNowInISO);
 //
 //        file = new File("./data/" + timeNowInISO + "/vehicle");
 //        if(file.exists() == false) {
@@ -715,7 +739,7 @@ public class userApplication {
 
         //Iterate ithaki's Repo
 //        iterate_ithaki_music_repo(s, r, hostAddress, timeNowInISO);
-        iterate_ithaki_music_repo_aq(s, r, hostAddress, timeNowInISO);
+//        iterate_ithaki_music_repo_aq(s, r, hostAddress, timeNowInISO);
 
     }
 }
